@@ -1,0 +1,119 @@
+---
+title: "part3_R_survival_analysis"
+author: "Gargya Péter"
+date: '2021 május 28 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Survival analysis of the first model which uses 20k genes. Inputs come from Python.
+```{r}
+setwd("F:/Egyetem/TDK/TCGA_uterus")
+library(dplyr)
+
+original=read.delim("ucec_tcga_clinical_data.tsv")
+original=original %>% mutate_all(as.character)
+original$Sample.ID=gsub("-", ".", original$Sample.ID)
+original <- filter(original,substr(original$Sample.ID,14,15)=="01")  
+for(i in 1:nrow(original)){if(original$Neoplasm.Histologic.Grade[i]=="High Grade"){original$Neoplasm.Histologic.Grade[i]<-"G3"}}
+original=filter(original, original$Neoplasm.Histologic.Type.Name=="Endometrioid endometrial adenocarcinoma")
+original=filter(original, original$Neoadjuvant.Therapy.Type.Administered.Prior.To.Resection.Text=="No")
+table(original$Neoplasm.Histologic.Grade)
+
+g2=read.delim("G2_preds.txt")
+original=filter(original, original$Sample.ID %in% g2$samples)
+original=arrange(original, original$Sample.ID)
+g2=arrange(g2, g2$samples)
+all(g2$samples==original$Sample.ID)
+original$pred_proba=g2$pred_proba
+
+original$label=ifelse(original$pred_proba>=0.5158678571930849, 1, 0) #threshold comes from Python
+
+library(survminer)
+library(survival)
+
+original$Disease.Free..Months.=as.numeric(original$Disease.Free..Months.)
+original=filter(original, is.na(original$Disease.Free.Status)==FALSE)
+original$Disease.Free.Status=ifelse(original$Disease.Free.Status=="0:DiseaseFree",0,1)
+original$Disease.Free.Status=as.numeric(original$Disease.Free.Status)
+
+fit <- survfit(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)
+survtest=survdiff(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)
+print(survtest)
+1 - pchisq(survtest$chisq, 1)
+pdf("km_plot_bigmodel.pdf",  width=7, height=5)
+ggsurvplot(fit, data = original, risk.table = FALSE, pval = TRUE, conf.int = FALSE, ylim=c(0.5,1), legend.title = "Grade",
+           font.legend=12, legend.labs = c("low-risk G2", "high-risk G2"), xlab="Time (months)", ylab="Relapsus-free survival probability", palette = c("#3776ab", "#FF0000"))
+dev.off()
+fit.coxph <- coxph(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)
+summary(fit.coxph)
+exp(fit.coxph$coefficients)
+exp(confint(fit.coxph))
+
+```
+
+
+Survival analysis with decreased number of genes
+```{r}
+setwd("F:/Egyetem/TDK/TCGA_uterus")
+library(dplyr)
+original=read.delim("ucec_tcga_clinical_data.tsv")
+original=original %>% mutate_all(as.character)
+original$Sample.ID=gsub("-", ".", original$Sample.ID)
+original <- filter(original,substr(original$Sample.ID,14,15)=="01")  
+for(i in 1:nrow(original)){if(original$Neoplasm.Histologic.Grade[i]=="High Grade"){original$Neoplasm.Histologic.Grade[i]<-"G3"}}
+original=filter(original, original$Neoplasm.Histologic.Type.Name=="Endometrioid endometrial adenocarcinoma")
+original=filter(original, original$Neoadjuvant.Therapy.Type.Administered.Prior.To.Resection.Text=="No")
+table(original$Neoplasm.Histologic.Grade)
+
+g2=read.delim("G2_preds_with_mingenes.txt")
+original=filter(original, original$Sample.ID %in% g2$samples)
+original=arrange(original, original$Sample.ID)
+g2=arrange(g2, g2$samples)
+all(g2$samples==original$Sample.ID)
+original$pred_proba=g2$pred_proba
+
+original$label=ifelse(original$pred_proba>=0.7420612247092881, 1, 0)
+
+library(survminer)
+library(survival)
+
+original$Disease.Free..Months.=as.numeric(original$Disease.Free..Months.)
+original=filter(original, is.na(original$Disease.Free.Status)==FALSE)
+original$Disease.Free.Status=ifelse(original$Disease.Free.Status=="0:DiseaseFree",0,1)
+original$Disease.Free.Status=as.numeric(original$Disease.Free.Status)
+
+fit <- survfit(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)
+survtest=survdiff(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)
+print(survtest)
+1 - pchisq(survtest$chisq, 1)
+pdf("km_plot_smallmodel.pdf",  width=7, height=5)
+ggsurvplot(fit, data = original, risk.table = FALSE, pval = TRUE, conf.int = FALSE, ylim=c(0.5,1), legend.title = "Grade",
+           font.legend=12, legend.labs = c("low-risk G2", "high-risk G2"), xlab="Time (months)", ylab="Relapsus-free survival probability", palette = c("#3776ab", "#FF0000"))
+dev.off()
+fit.coxph <- coxph(Surv(Disease.Free..Months., Disease.Free.Status) ~ label, data = original)  
+summary(fit.coxph)
+exp(fit.coxph$coefficients)
+exp(confint(fit.coxph))
+```
+
+
+Creating horizontal barchart for the 12 most important genes and their Elastic net coefficients.
+```{r}
+toplot=read.delim("to_plot_barchart.txt")
+toplot$mark=ifelse(toplot$coefs<0,"blue","red")
+
+library(mygene)
+asd=queryMany(toplot$X, scopes="ensembl.gene", fields=c("uniprot", "symbol", "reporter"), species="human")
+toplot$X=asd$symbol
+
+pdf("top12coeffs.pdf",  width=8, height=5)
+par(las=2) # make label text perpendicular to axis
+par(mar=c(5,10,4,2)) # increase y-axis margin.
+barplot(toplot$coefs, main="Elastic-net coefficients (top 12)", horiz=TRUE, names.arg=toplot$X, col=toplot$mark)
+dev.off()
+```
+

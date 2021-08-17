@@ -1,0 +1,155 @@
+---
+title: "part1_R_prepare_data"
+author: "Gargya Péter"
+date: '2021 május 28 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Downloading RNA-seq data and write it as a txt output.
+```{r}
+setwd("F:/Egyetem/TDK/TCGA_uterus")
+library(TCGAbiolinks)
+library(dplyr)
+query <- GDCquery(project = "TCGA-UCEC",
+                      legacy = FALSE,
+                      data.category = "Transcriptome Profiling",
+                      data.type = "Gene Expression Quantification", 
+                      workflow.type = "HTSeq - Counts")
+GDCdownload(query)
+data <- GDCprepare(query, summarizedExperiment = FALSE)
+write.table(data, file='tcgaBiolinks_uterus_rnaseq_raw.txt', sep='\t',  row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+
+Filtering and normalising data
+```{r}
+setwd("F:/Egyetem/TDK/TCGA_uterus")
+library(dplyr)
+
+original=read.delim("ucec_tcga_clinical_data.tsv")
+print(nrow(original))
+original=original %>% mutate_all(as.character)
+original$Sample.ID=gsub("-", ".", original$Sample.ID)
+original <- filter(original,substr(original$Sample.ID,14,15)=="01")
+print(nrow(original))
+for(i in 1:nrow(original)){if(original$Neoplasm.Histologic.Grade[i]=="High Grade"){original$Neoplasm.Histologic.Grade[i]<-"G3"}}
+original=filter(original, original$Neoplasm.Histologic.Type.Name=="Endometrioid endometrial adenocarcinoma")
+print(nrow(original))
+original=filter(original, original$Neoadjuvant.Therapy.Type.Administered.Prior.To.Resection.Text=="No")
+print(nrow(original))
+table(original$Neoplasm.Histologic.Grade)
+
+rnaseq=read.delim('tcgaBiolinks_uterus_rnaseq_raw.txt')
+print(nrow(rnaseq))
+print(ncol(rnaseq)-1)
+rownames(rnaseq)=substr(rnaseq$X1,1,15); rnaseq$X1=NULL
+names(rnaseq)=substr(names(rnaseq),1,15)
+rnaseq=as.data.frame(t(rnaseq))
+rnaseq$sample=rownames(rnaseq)
+rnaseq=filter(rnaseq, rnaseq$sample %in% original$Sample.ID)
+print(nrow(rnaseq))
+rnaseq=filter(rnaseq, duplicated(rnaseq$sample)==FALSE)
+print(nrow(rnaseq))
+rownames(rnaseq)=rnaseq$sample
+original=filter(original, original$Sample.ID %in% rownames(rnaseq))
+print(nrow(original))
+original=arrange(original, original$Sample.ID)
+rnaseq=arrange(rnaseq, rnaseq$sample)
+all(original$Sample.ID==rnaseq$sample)
+rnaseq$sample=NULL
+rnaseq=as.data.frame(t(rnaseq))
+
+#########Patient data summary
+original$Diagnosis.Age=as.numeric(original$Diagnosis.Age)
+print(table(original$Neoplasm.Histologic.Grade))
+print(original %>% group_by(Neoplasm.Histologic.Grade) %>% summarise_at(vars(Diagnosis.Age), funs(mean(., na.rm=TRUE))))
+print(original %>% group_by(Neoplasm.Histologic.Grade) %>% summarise_at(vars(Diagnosis.Age), funs(sd(., na.rm=TRUE))))
+
+write.table(original, file='uterus_clindata_filtered.txt', sep='\t',  row.names=TRUE, col.names=TRUE, quote=FALSE)
+
+##Reloading RNA-seq data in order to use VST normalisation for Machine LEarning (G1 and G3 only)
+g2=filter(original, original$Neoplasm.Histologic.Grade=="G2")
+original=filter(original, original$Neoplasm.Histologic.Grade!="G2")
+
+rnaseq=read.delim('tcgaBiolinks_uterus_rnaseq_raw.txt')
+rownames(rnaseq)=substr(rnaseq$X1,1,15); rnaseq$X1=NULL
+names(rnaseq)=substr(names(rnaseq),1,15)
+rnaseq=as.data.frame(t(rnaseq))
+rnaseq$sample=rownames(rnaseq)
+rnaseq=filter(rnaseq, rnaseq$sample %in% original$Sample.ID)
+rnaseq=filter(rnaseq, duplicated(rnaseq$sample)==FALSE)
+rownames(rnaseq)=rnaseq$sample
+original=filter(original, original$Sample.ID %in% rownames(rnaseq))
+original=arrange(original, original$Sample.ID)
+rnaseq=arrange(rnaseq, rnaseq$sample)
+all(original$Sample.ID==rnaseq$sample)
+rnaseq$sample=NULL
+rnaseq=as.data.frame(t(rnaseq))
+
+coldata=data.frame(grade=original$Neoplasm.Histologic.Grade, row.names = colnames(rnaseq))
+cts=as.matrix(rnaseq)
+library("DESeq2")
+library("BiocParallel")
+ddsTrain <- DESeqDataSetFromMatrix(countData = cts, colData = coldata, design = ~grade)
+keep <- rowMeans(counts(ddsTrain)) > 4
+ddsTrain <- ddsTrain[keep,]
+dim(ddsTrain)
+ddsTrain <- estimateSizeFactors(ddsTrain)
+ddsTrain <- estimateDispersions(ddsTrain)
+vst <- varianceStabilizingTransformation(ddsTrain, blind = FALSE)
+array=as.data.frame(t(assay(vst)))
+all(rownames(coldata)==rownames(assay))
+array$label=coldata$grade
+write.table(array, file='uterus_rnaseq_VST.txt', sep='\t',  row.names=TRUE, col.names=TRUE, quote=FALSE)
+
+
+library(ggplot2)
+pdf("pca_g1g3.pdf",  width=10, height=10)
+pcaData <- plotPCA(vst, intgroup=c("grade"), returnData=TRUE, ntop=500)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+ggplot(pcaData, aes(PC1, PC2, color=grade, shape=grade)) +
+  geom_point(size=2) + 
+  theme(text = element_text(size=20)) + 
+  scale_color_manual(values=c("#3776ab", "#FF0000")) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed()
+dev.off()
+
+###########################G2 group RNA-seq VST normalising
+original=g2
+rnaseq=read.delim('tcgaBiolinks_uterus_rnaseq_raw.txt')
+rownames(rnaseq)=substr(rnaseq$X1,1,15); rnaseq$X1=NULL
+names(rnaseq)=substr(names(rnaseq),1,15)
+rnaseq=as.data.frame(t(rnaseq))
+rnaseq$sample=rownames(rnaseq)
+rnaseq=filter(rnaseq, rnaseq$sample %in% original$Sample.ID)
+rnaseq=filter(rnaseq, duplicated(rnaseq$sample)==FALSE)
+rownames(rnaseq)=rnaseq$sample
+original=filter(original, original$Sample.ID %in% rownames(rnaseq))
+original=arrange(original, original$Sample.ID)
+rnaseq=arrange(rnaseq, rnaseq$sample)
+all(original$Sample.ID==rnaseq$sample)
+rnaseq$sample=NULL
+rnaseq=as.data.frame(t(rnaseq))
+coldata=data.frame(grade=original$Neoplasm.Histologic.Grade, row.names = colnames(rnaseq))
+cts=as.matrix(rnaseq)
+
+ddsG2 <- DESeqDataSetFromMatrix(countData = cts, colData = coldata, design = ~1)
+keep = keep
+ddsG2 <- ddsG2[keep,]
+ddsG2 <- estimateSizeFactors(ddsG2)
+dispersionFunction(ddsG2) <- dispersionFunction(ddsTrain)
+vstG2 <- varianceStabilizingTransformation(ddsG2, blind = FALSE)
+array=as.data.frame(t(assay(vstG2)))
+all(rownames(coldata)==rownames(assay))
+array$label=coldata$grade
+write.table(array, file='uterus_rnaseq_VST_G2.txt', sep='\t',  row.names=TRUE, col.names=TRUE, quote=FALSE)
+```
+
+
+
