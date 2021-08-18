@@ -5,6 +5,8 @@ See details and detailed explanation in the following article's materials and me
 If you use this code for your work, please cite the above mentioned article!
 
 Processed data used for machine learning:
+
 G1 and G3: https://drive.google.com/file/d/1hlIbpuRWAZdq6qPRK_4VtQ177_cq7NND/view?usp=sharing
+
 G2 only: https://drive.google.com/file/d/1hlbdCqMXpgPS1_QzGipDkv_76jrEI5UO/view?usp=sharing
 
