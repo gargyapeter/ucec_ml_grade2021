@@ -5,4 +5,4 @@ See details and detailed explanation in the following article's materials and me
 
 #place of citation
 
-##########################If you use this code for your work, please cite the above mentioned article!############################
+If you use this code for your work, please cite the above mentioned article!
