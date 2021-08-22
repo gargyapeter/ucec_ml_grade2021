@@ -108,6 +108,8 @@ original$stage_copy=original$stage
 original$stage=ifelse(original$stage=="Stage I","local","advanced")
 
 subtype_df=read.delim("TCGASubtype.20170308.tsv")
+#Tsv file comes from Xenabrowser: TCGA Pan-Cancer dataset.
+#https://xenabrowser.net/datapages/?dataset=TCGASubtype.20170308.tsv&host=https%3A%2F%2Fpancanatlas.xenahubs.net&removeHub=https%3A%2F%2Fxena.treehouse.gi.ucsc.edu%3A443
 subtype_df=subtype_df %>% mutate_all(as.character)
 subtype_df$sampleID=gsub("-", ".", subtype_df$sampleID)
 subtype_df=filter(subtype_df, subtype_df$sampleID %in% original$Sample.ID)
