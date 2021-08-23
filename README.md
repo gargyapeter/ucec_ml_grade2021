@@ -11,7 +11,6 @@ Name: dr. Bálint László Bálint
 Institution: Genomic Medicine and Bioinformatics Core Facility, Department of Biochemistry and Molecular Biology, Faculty of Medicine, University of Debrecen  
 Address: Egyetem tér 1, 4032 Debrecen, Hungary  
 Email: lbalint@med.unideb.hu  
-
 B. Associate or Co-investigator Contact Information  
 Name: Péter Gargya  
 Institution: Genomic Medicine and Bioinformatics Core Facility, Department of Biochemistry and Molecular Biology, Faculty of Medicine,   University of Debrecen  
