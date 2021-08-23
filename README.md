@@ -1,17 +1,3 @@
-# ucec_ml_grade2021
-Codes used in the reasearch of "Histological Grade of Endometrioid Endometrial Cancer and Relapse Risk Can Be Predicted With Machine Learning From Gene Expression Data".
-
-Processed, normalised data are available as zipped txt files.
-
-See details and detailed explanation in the following article's materials and methods section:
-
-#place of citation
-
-If you use this code for your work, please cite the above mentioned article!
-
-
-
-
 This README.md file was generated on 2021-08-23 by Péter Gargya
 
 GENERAL INFORMATION
@@ -25,11 +11,11 @@ Institution: Genomic Medicine and Bioinformatics Core Facility, Department of Bi
 Address: Egyetem tér 1, 4032 Debrecen, Hungary
 Email: lbalint@med.unideb.hu
 
-B. Associate or Co-investigator Contact Information
-Name: Péter Gargya
-Institution: Genomic Medicine and Bioinformatics Core Facility, Department of Biochemistry and Molecular Biology, Faculty of Medicine, University of Debrecen
-Address: Egyetem tér 1, 4032 Debrecen, Hungary
-Email: gargya.peter@gmail.com
+B. Associate or Co-investigator Contact Information  
+Name: Péter Gargya  
+Institution: Genomic Medicine and Bioinformatics Core Facility, Department of Biochemistry and Molecular Biology, Faculty of Medicine,   University of Debrecen  
+Address: Egyetem tér 1, 4032 Debrecen, Hungary  
+Email: gargya.peter@gmail.com  
 
 
 SHARING/ACCESS INFORMATION
