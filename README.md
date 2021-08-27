@@ -22,10 +22,11 @@ SHARING/ACCESS INFORMATION
 
 1. Licenses/restrictions placed on the data: The data and codes provided are free to use, however we kindly ask everybody to cite our article as written below.  
 
-2. Links to publications that cite or use the data: NOT YET RELEASED  
+2. Links to publications that cite or use the data:   
+https://www.mdpi.com/2072-6694/13/17/4348/htm  
 
-3. Recommended citation for this dataset: NOT YET RELEASED  
-
+3. Recommended citation for this dataset:   
+Gargya, P.; Bálint, B.L. Histological Grade of Endometrioid Endometrial Cancer and Relapse Risk Can Be Predicted with Machine Learning from Gene Expression Data. Cancers 2021, 13, 4348. https://doi.org/10.3390/cancers13174348 
 
 DATA & FILE OVERVIEW  
 
